@@ -1,28 +1,36 @@
-import streamlit as st
-from utils import get_stock_data
-from environment import TradingEnvironment
 from agent import DQNAgent
+from environment import TradingEnvironment
+from utils import get_stock_data
 
-st.title("AI Trading Agent")
+data = get_stock_data("AAPL")
 
-symbol = st.text_input("Enter Stock Symbol", "AAPL")
+env = TradingEnvironment(data)
 
-if st.button("Run AI Agent"):
+state_size = 4
+action_size = 3
 
-    data = get_stock_data(symbol)
+agent = DQNAgent(state_size, action_size)
 
-    env = TradingEnvironment(data)
+episodes = 200
+batch_size = 32
 
-    agent = DQNAgent(state_size=4, action_size=3)
+for episode in range(episodes):
 
     state = env.reset()
+    done = False
 
-    action = agent.act(state)
+    while not done:
 
-    actions = {
-        0: "HOLD",
-        1: "BUY",
-        2: "SELL"
-    }
+        action = agent.act(state)
 
-    st.success(f"AI Recommendation: {actions[action]}")
+        next_state, reward, done, _ = env.step(action)
+
+        agent.remember(state, action, reward, next_state, done)
+
+        state = next_state
+
+    agent.replay(batch_size)
+
+    print(f"Episode {episode+1}/{episodes} completed")
+
+print("Training finished")
