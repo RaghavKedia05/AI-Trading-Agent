@@ -1,3 +1,10 @@
+import torch
+
+agent.model.load_state_dict(
+    torch.load("trained_model.pth", map_location=torch.device("cpu"))
+)
+
+agent.epsilon = 0
 # -----------------------------
 # Run AI Agent
 # -----------------------------
