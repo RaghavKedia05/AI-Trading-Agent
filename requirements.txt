@@ -1,8 +1,4 @@
-numpy
-pandas
-matplotlib
-torch
 yfinance
-scikit-learn
-streamlit
-seaborn
+pandas
+numpy
+torch
