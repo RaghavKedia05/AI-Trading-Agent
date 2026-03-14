@@ -1,54 +1,108 @@
 import streamlit as st
 import yfinance as yf
 import pandas as pd
+import plotly.graph_objects as go
 
 from environment import TradingEnvironment
 from agent import DQNAgent
 
-st.title("AI Trading Agent")
+# Page settings
+st.set_page_config(
+    page_title="AI Trading Dashboard",
+    page_icon="📈",
+    layout="wide"
+)
 
-st.write("Enter a stock symbol to get an AI trading recommendation.")
+st.title("📈 AI Trading Agent Dashboard")
 
-# Stock input
-symbol = st.text_input("Enter Stock Symbol (Example: AAPL, TCS, INFY)", "AAPL")
+st.markdown("AI-powered trading signal generator")
 
-# Automatically handle Indian stocks
-if symbol.isalpha() and symbol.isupper() and len(symbol) <= 10:
-    indian_symbol = symbol + ".NS"
-else:
-    indian_symbol = symbol
+# Sidebar
+st.sidebar.header("Stock Settings")
 
-if st.button("Run AI Agent"):
+symbol = st.sidebar.text_input("Stock Symbol", "AAPL")
 
-    # Try downloading US stock first
-    data = yf.download(symbol, period="2y")
+period = st.sidebar.selectbox(
+    "Select Time Period",
+    ["3mo", "6mo", "1y", "2y"]
+)
 
-    # If empty try NSE symbol
-    if data.empty:
-        data = yf.download(indian_symbol, period="2y")
+run_ai = st.sidebar.button("Run AI Analysis")
 
-    # If still empty show error
-    if data.empty:
-        st.error("Invalid stock symbol. Try examples like AAPL, MSFT, TCS, INFY.")
-        st.stop()
+# Download data
+data = yf.download(symbol, period=period)
 
-    # Feature engineering
-    data['SMA_5'] = data['Close'].rolling(window=5).mean()
-    data['SMA_20'] = data['Close'].rolling(window=20).mean()
-    data['Returns'] = data['Close'].pct_change()
+if data.empty:
+    st.error("Invalid stock symbol. Try AAPL, MSFT, TCS.NS, INFY.NS")
+    st.stop()
 
-    data.dropna(inplace=True)
-    data.reset_index(drop=True, inplace=True)
+# Feature engineering
+data['SMA_5'] = data['Close'].rolling(5).mean()
+data['SMA_20'] = data['Close'].rolling(20).mean()
+data['Returns'] = data['Close'].pct_change()
 
-    st.subheader("Stock Data Preview")
-    st.dataframe(data.tail())
+data.dropna(inplace=True)
+data.reset_index(inplace=True)
 
-    # Run trading environment
+# Top metrics
+col1, col2, col3 = st.columns(3)
+
+current_price = round(data['Close'].iloc[-1], 2)
+high_price = round(data['High'].max(), 2)
+low_price = round(data['Low'].min(), 2)
+
+col1.metric("Current Price", f"${current_price}")
+col2.metric("Period High", f"${high_price}")
+col3.metric("Period Low", f"${low_price}")
+
+# Stock chart
+st.subheader("📊 Stock Price Chart")
+
+fig = go.Figure()
+
+fig.add_trace(
+    go.Scatter(
+        x=data['Date'],
+        y=data['Close'],
+        name="Price",
+        line=dict(width=3)
+    )
+)
+
+fig.add_trace(
+    go.Scatter(
+        x=data['Date'],
+        y=data['SMA_5'],
+        name="SMA 5",
+        line=dict(dash="dot")
+    )
+)
+
+fig.add_trace(
+    go.Scatter(
+        x=data['Date'],
+        y=data['SMA_20'],
+        name="SMA 20",
+        line=dict(dash="dash")
+    )
+)
+
+fig.update_layout(
+    template="plotly_dark",
+    height=500
+)
+
+st.plotly_chart(fig, use_container_width=True)
+
+# AI section
+if run_ai:
+
+    st.subheader("🤖 AI Trading Signal")
+
     env = TradingEnvironment(data)
     agent = DQNAgent(state_size=4, action_size=3)
 
     state = env.reset()
-
     action = agent.act(state)
 
     actions = {
@@ -57,6 +111,15 @@ if st.button("Run AI Agent"):
         2: "SELL"
     }
 
-    st.subheader("AI Recommendation")
+    signal = actions[action]
 
-    st.success(actions[action])
+    if signal == "BUY":
+        st.success("🟢 BUY SIGNAL")
+    elif signal == "SELL":
+        st.error("🔴 SELL SIGNAL")
+    else:
+        st.warning("🟡 HOLD POSITION")
+
+# Data preview
+with st.expander("View Raw Data"):
+    st.dataframe(data.tail(20))
