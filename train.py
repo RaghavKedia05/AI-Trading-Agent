@@ -1,23 +1,8 @@
-import yfinance as yf
-import pandas as pd
-
-from environment import TradingEnvironment
 from agent import DQNAgent
+from environment import TradingEnvironment
+from utils import get_stock_data
 
-print("Downloading stock data...")
-
-symbol = "AAPL"
-start_date = "2020-01-01"
-end_date = "2025-02-14"
-
-data = yf.download(symbol, start=start_date, end=end_date)
-
-data['SMA_5'] = data['Close'].rolling(window=5).mean()
-data['SMA_20'] = data['Close'].rolling(window=20).mean()
-data['Returns'] = data['Close'].pct_change()
-
-data.dropna(inplace=True)
-data.reset_index(drop=True, inplace=True)
+data = get_stock_data("AAPL")
 
 env = TradingEnvironment(data)
 
@@ -26,16 +11,13 @@ action_size = 3
 
 agent = DQNAgent(state_size, action_size)
 
+episodes = 200
 batch_size = 32
-episodes = 500
-
-print("Starting training...")
 
 for episode in range(episodes):
 
     state = env.reset()
     done = False
-    total_reward = 0
 
     while not done:
 
@@ -47,10 +29,8 @@ for episode in range(episodes):
 
         state = next_state
 
-        total_reward += reward
-
     agent.replay(batch_size)
 
-    print(f"Episode {episode+1}/{episodes} Reward: {total_reward}")
+    print(f"Episode {episode+1}/{episodes} completed")
 
-print("Training Complete!")
+print("Training finished")
