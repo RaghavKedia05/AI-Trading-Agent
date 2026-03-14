@@ -5,12 +5,6 @@ import random
 from collections import deque
 from model import DQN
 
-ACTIONS = {
-    0: "HOLD",
-    1: "BUY",
-    2: "SELL"
-}
-
 class DQNAgent:
 
     def __init__(self, state_size, action_size):
@@ -30,7 +24,6 @@ class DQNAgent:
         self.model = DQN(state_size, action_size)
 
         self.optimizer = optim.Adam(self.model.parameters(), lr=self.learning_rate)
-
         self.criterion = nn.MSELoss()
 
     def remember(self, state, action, reward, next_state, done):
@@ -39,7 +32,7 @@ class DQNAgent:
     def act(self, state):
 
         if random.uniform(0, 1) < self.epsilon:
-            return random.choice(list(ACTIONS.keys()))
+            return random.randrange(self.action_size)
 
         state = torch.FloatTensor(state).unsqueeze(0)
 
@@ -65,18 +58,16 @@ class DQNAgent:
 
             state_tensor = torch.FloatTensor(state).unsqueeze(0)
 
-            target_tensor = self.model(state_tensor).clone().detach()
-
-            target_tensor[0][action] = target
+            target_f = self.model(state_tensor).clone().detach()
+            target_f[0][action] = target
 
             self.optimizer.zero_grad()
 
             output = self.model(state_tensor)
 
-            loss = self.criterion(output, target_tensor)
+            loss = self.criterion(output, target_f)
 
             loss.backward()
-
             self.optimizer.step()
 
         if self.epsilon > self.epsilon_min:
