@@ -6,21 +6,21 @@ import plotly.graph_objects as go
 from environment import TradingEnvironment
 from agent import DQNAgent
 
-# Page configuration
+# Page config
 st.set_page_config(
     page_title="AI Trading Dashboard",
     page_icon="📈",
     layout="wide"
 )
 
-st.title("📈 AI Trading Agent Dashboard")
-st.markdown("AI-powered trading signal generator")
+st.title("📈 AI Trading Agent")
+st.write("Deep Reinforcement Learning based stock trading assistant")
 
-# Sidebar controls
+# Sidebar
 st.sidebar.header("Stock Settings")
 
 symbol = st.sidebar.text_input(
-    "Enter Stock Symbol (Example: AAPL, MSFT, TCS.NS)",
+    "Enter Stock Symbol",
     "AAPL"
 )
 
@@ -31,38 +31,45 @@ period = st.sidebar.selectbox(
 
 run_ai = st.sidebar.button("Run AI Analysis")
 
-# Download stock data
-data = yf.download(symbol, period=period)
 
-if data.empty:
-    st.error("Invalid stock symbol. Try AAPL, MSFT, TCS.NS, INFY.NS")
+# Load stock data
+@st.cache_data
+def load_data(symbol, period):
+
+    data = yf.download(symbol, period=period)
+
+    if data.empty:
+        return None
+
+    data.reset_index(inplace=True)
+
+    data['SMA_5'] = data['Close'].rolling(5).mean()
+    data['SMA_20'] = data['Close'].rolling(20).mean()
+    data['Returns'] = data['Close'].pct_change()
+
+    data.dropna(inplace=True)
+    data.reset_index(drop=True, inplace=True)
+
+    return data
+
+
+data = load_data(symbol, period)
+
+if data is None:
+    st.error("Invalid stock symbol. Try AAPL, TSLA, TCS.NS, INFY.NS")
     st.stop()
 
-# Fix date column issue
-data.reset_index(inplace=True)
 
-# Feature Engineering
-data['SMA_5'] = data['Close'].rolling(5).mean()
-data['SMA_20'] = data['Close'].rolling(20).mean()
-data['Returns'] = data['Close'].pct_change()
-
-# Clean data
-data.dropna(inplace=True)
-data.reset_index(drop=True, inplace=True)
-
-# Top metrics
+# Metrics
 col1, col2, col3 = st.columns(3)
 
-current_price = round(data['Close'].iloc[-1], 2)
-high_price = round(data['High'].max(), 2)
-low_price = round(data['Low'].min(), 2)
+col1.metric("Current Price", f"${round(data['Close'].iloc[-1],2)}")
+col2.metric("High", f"${round(data['High'].max(),2)}")
+col3.metric("Low", f"${round(data['Low'].min(),2)}")
 
-col1.metric("Current Price", f"${current_price}")
-col2.metric("Period High", f"${high_price}")
-col3.metric("Period Low", f"${low_price}")
 
-# Stock price chart
-st.subheader("📊 Stock Price Chart")
+# Chart
+st.subheader("Stock Price Chart")
 
 fig = go.Figure()
 
@@ -70,8 +77,7 @@ fig.add_trace(
     go.Scatter(
         x=data['Date'],
         y=data['Close'],
-        name="Price",
-        line=dict(width=3)
+        name="Price"
     )
 )
 
@@ -79,8 +85,7 @@ fig.add_trace(
     go.Scatter(
         x=data['Date'],
         y=data['SMA_5'],
-        name="SMA 5",
-        line=dict(dash="dot")
+        name="SMA 5"
     )
 )
 
@@ -88,30 +93,34 @@ fig.add_trace(
     go.Scatter(
         x=data['Date'],
         y=data['SMA_20'],
-        name="SMA 20",
-        line=dict(dash="dash")
+        name="SMA 20"
     )
 )
 
 fig.update_layout(
     template="plotly_dark",
-    height=500,
-    xaxis_title="Date",
-    yaxis_title="Price"
+    height=500
 )
 
 st.plotly_chart(fig, use_container_width=True)
 
-# Run AI Agent
+
+# Run AI
 if run_ai:
 
-    st.subheader("🤖 AI Trading Signal")
+    st.subheader("AI Trading Signal")
 
     try:
+
         env = TradingEnvironment(data)
-        agent = DQNAgent(state_size=4, action_size=3)
+
+        agent = DQNAgent(
+            state_size=4,
+            action_size=3
+        )
 
         state = env.reset()
+
         action = agent.act(state)
 
         actions = {
@@ -124,14 +133,18 @@ if run_ai:
 
         if signal == "BUY":
             st.success("🟢 BUY SIGNAL")
+
         elif signal == "SELL":
             st.error("🔴 SELL SIGNAL")
+
         else:
-            st.warning("🟡 HOLD POSITION")
+            st.warning("🟡 HOLD")
 
     except Exception as e:
-        st.error("AI model failed to run. Please try another stock.")
 
-# Data preview
+        st.error("AI model failed to run. Try another stock.")
+
+
+# Data viewer
 with st.expander("View Raw Data"):
     st.dataframe(data.tail(20))
