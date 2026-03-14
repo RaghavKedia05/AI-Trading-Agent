@@ -31,7 +31,7 @@ class DQNAgent:
 
     def act(self, state):
 
-        if random.uniform(0, 1) < self.epsilon:
+        if np.random.rand() <= self.epsilon:
             return random.randrange(self.action_size)
 
         state = torch.FloatTensor(state).unsqueeze(0)
