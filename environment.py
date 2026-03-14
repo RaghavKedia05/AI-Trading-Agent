@@ -1,6 +1,10 @@
 import numpy as np
 
+
 def get_state(data, index):
+    """
+    Extract the state representation for the RL agent.
+    """
 
     row = data.iloc[index]
 
@@ -18,9 +22,8 @@ class TradingEnvironment:
 
         self.data = data
         self.initial_balance = 10000
-        self.balance = self.initial_balance
-        self.holdings = 0
-        self.index = 0
+
+        self.reset()
 
     def reset(self):
 
@@ -32,16 +35,18 @@ class TradingEnvironment:
 
     def step(self, action):
 
-        price = float(self.data.loc[self.index, 'Close'])
+        price = float(self.data.iloc[self.index]['Close'])
+
         reward = 0
 
+        # BUY
         if action == 1 and self.balance >= price:
+            shares = self.balance // price
+            self.holdings += shares
+            self.balance -= shares * price
 
-            self.holdings = self.balance // price
-            self.balance -= self.holdings * price
-
+        # SELL
         elif action == 2 and self.holdings > 0:
-
             self.balance += self.holdings * price
             self.holdings = 0
 
@@ -50,7 +55,8 @@ class TradingEnvironment:
         done = self.index >= len(self.data) - 1
 
         if done:
-            reward = self.balance - self.initial_balance
+            portfolio_value = self.balance + self.holdings * price
+            reward = portfolio_value - self.initial_balance
 
         next_state = None if done else get_state(self.data, self.index)
 
