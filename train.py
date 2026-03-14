@@ -34,3 +34,4 @@ for episode in range(episodes):
     print(f"Episode {episode+1}/{episodes} completed")
 
 print("Training finished")
+torch.save(agent.model.state_dict(), "trained_model.pth")
