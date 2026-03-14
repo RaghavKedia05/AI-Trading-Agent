@@ -44,6 +44,9 @@ data['Returns'] = data['Close'].pct_change()
 data.dropna(inplace=True)
 data.reset_index(inplace=True)
 
+data = data[['Close','High','Low','SMA_5','SMA_20','Returns']]
+data.dropna(inplace=True)
+data.reset_index(drop=True, inplace=True)
 # Top metrics
 col1, col2, col3 = st.columns(3)
 
