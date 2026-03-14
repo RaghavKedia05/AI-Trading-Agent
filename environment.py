@@ -2,11 +2,13 @@ import numpy as np
 
 def get_state(data, index):
 
+    row = data.iloc[index]
+
     return np.array([
-        float(data.loc[index, 'Close']),
-        float(data.loc[index, 'SMA_5']),
-        float(data.loc[index, 'SMA_20']),
-        float(data.loc[index, 'Returns'])
+        float(row['Close']),
+        float(row['SMA_5']),
+        float(row['SMA_20']),
+        float(row['Returns'])
     ])
 
 
