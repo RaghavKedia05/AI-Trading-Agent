@@ -1,8 +1,19 @@
-from utils import get_state
+import numpy as np
+
+def get_state(data, index):
+
+    return np.array([
+        float(data.loc[index, 'Close']),
+        float(data.loc[index, 'SMA_5']),
+        float(data.loc[index, 'SMA_20']),
+        float(data.loc[index, 'Returns'])
+    ])
+
 
 class TradingEnvironment:
 
     def __init__(self, data):
+
         self.data = data
         self.initial_balance = 10000
         self.balance = self.initial_balance
@@ -10,9 +21,11 @@ class TradingEnvironment:
         self.index = 0
 
     def reset(self):
+
         self.balance = self.initial_balance
         self.holdings = 0
         self.index = 0
+
         return get_state(self.data, self.index)
 
     def step(self, action):
@@ -21,10 +34,12 @@ class TradingEnvironment:
         reward = 0
 
         if action == 1 and self.balance >= price:
+
             self.holdings = self.balance // price
             self.balance -= self.holdings * price
 
         elif action == 2 and self.holdings > 0:
+
             self.balance += self.holdings * price
             self.holdings = 0
 
