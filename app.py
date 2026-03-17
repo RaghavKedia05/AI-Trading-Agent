@@ -1,67 +1,45 @@
 import streamlit as st
 import yfinance as yf
 import pandas as pd
-import numpy as np
-import torch
-import torch.nn as nn
 import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
+import numpy as np
 
-# Model
-class DQN(nn.Module):
-    def __init__(self):
-        super().__init__()
-        self.fc1 = nn.Linear(4, 64)
-        self.fc2 = nn.Linear(64, 64)
-        self.fc3 = nn.Linear(64, 3)
-
-    def forward(self, x):
-        x = torch.relu(self.fc1(x))
-        x = torch.relu(self.fc2(x))
-        return self.fc3(x)
-
-# Load trained model
-model = DQN()
-model.load_state_dict(torch.load("model.pth", map_location=torch.device('cpu')))
-model.eval()
-
-ACTIONS = {0: "HOLD", 1: "BUY", 2: "SELL"}
-
-def get_state(data, index):
-    return np.array([
-        float(data.loc[index, 'Close']),
-        float(data.loc[index, 'SMA_5']),
-        float(data.loc[index, 'SMA_20']),
-        float(data.loc[index, 'Returns'])
-    ])
+st.set_page_config(page_title="AI Trading Agent", layout="wide")
 
 st.title("📈 AI Trading Agent")
 
-stock = st.text_input("Stock", "AAPL")
+stock = st.text_input("Enter Stock Symbol (e.g., AAPL, TSLA)", "AAPL")
 
-if st.button("Predict"):
-    data = yf.download(stock, period="1y")
+if st.button("Run Analysis"):
+    try:
+        data = yf.download(stock, period="1y")
 
-    data['SMA_5'] = data['Close'].rolling(5).mean()
-    data['SMA_20'] = data['Close'].rolling(20).mean()
-    data['Returns'] = data['Close'].pct_change()
-    data.dropna(inplace=True)
+        if data.empty:
+            st.error("Invalid stock symbol or no data found")
+            st.stop()
 
-    if data.empty:
-        st.error("No data found")
-        st.stop()
+        # Indicators
+        data["MA50"] = data["Close"].rolling(50).mean()
+        data["MA200"] = data["Close"].rolling(200).mean()
 
-    state = get_state(data, len(data)-1)
-    state = torch.FloatTensor(state).unsqueeze(0)
+        # Plot
+        fig, ax = plt.subplots()
+        ax.plot(data["Close"], label="Close Price")
+        ax.plot(data["MA50"], label="MA50")
+        ax.plot(data["MA200"], label="MA200")
+        ax.legend()
 
-    with torch.no_grad():
-        action = torch.argmax(model(state)).item()
+        st.pyplot(fig)
 
-    st.success(f"AI Decision: {ACTIONS[action]}")
+        # Trading Logic
+        if data["MA50"].iloc[-1] > data["MA200"].iloc[-1]:
+            st.success("📊 AI Signal: BUY")
+        elif data["MA50"].iloc[-1] < data["MA200"].iloc[-1]:
+            st.error("📉 AI Signal: SELL")
+        else:
+            st.warning("⚖️ AI Signal: HOLD")
 
-    # Plot
-    fig, ax = plt.subplots()
-    ax.plot(data['Close'], label="Price")
-    ax.legend()
-    st.pyplot(fig)
+    except Exception as e:
+        st.error(f"Error: {e}")
