@@ -1,38 +1,48 @@
 import streamlit as st
 import yfinance as yf
 import pandas as pd
+import matplotlib
+matplotlib.use('Agg')
 import matplotlib.pyplot as plt
+import numpy as np
+import random
+
+# Fix randomness
+np.random.seed(42)
+random.seed(42)
 
 st.set_page_config(page_title="AI Trading Agent", layout="wide")
 
 st.title("📈 AI Trading Agent")
 
-# User Input
-stock = st.text_input("Enter Stock Symbol (e.g., AAPL, TSLA)", "AAPL")
+stock = st.text_input("Enter Stock Symbol", "AAPL")
 
 if st.button("Run Analysis"):
-    data = yf.download(stock, period="1y")
+    try:
+        data = yf.download(stock, period="1y")
 
-    if data.empty:
-        st.error("Invalid stock symbol")
-    else:
-        st.success(f"Data loaded for {stock}")
+        if data.empty:
+            st.error("Invalid stock symbol or no data found")
+            st.stop()
 
-        # Moving Averages
-        data["MA50"] = data["Close"].rolling(window=50).mean()
-        data["MA200"] = data["Close"].rolling(window=200).mean()
+        # Moving averages
+        data["MA50"] = data["Close"].rolling(50).mean()
+        data["MA200"] = data["Close"].rolling(200).mean()
 
         # Plot
         fig, ax = plt.subplots()
-        ax.plot(data["Close"], label="Close Price")
+        ax.plot(data["Close"], label="Close")
         ax.plot(data["MA50"], label="MA50")
         ax.plot(data["MA200"], label="MA200")
         ax.legend()
 
         st.pyplot(fig)
 
-        # Simple Signal
+        # Signal
         if data["MA50"].iloc[-1] > data["MA200"].iloc[-1]:
-            st.success("📊 Signal: BUY")
+            st.success("📊 BUY Signal")
         else:
-            st.error("📉 Signal: SELL")
+            st.error("📉 SELL Signal")
+
+    except Exception as e:
+        st.error(f"Error: {e}")
